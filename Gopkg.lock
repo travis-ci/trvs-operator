@@ -374,7 +374,7 @@
   version = "kubernetes-1.12.0"
 
 [[projects]]
-  digest = "1:986f743b697a3f0c2749298d24586b98c38d2e409b3d0fa85aee26c5b3f90740"
+  digest = "1:77e9626afe641e37c594e8e3479b2eb829f4f51d4d4e04e2335250cdee3fa581"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -412,6 +412,7 @@
     "kubernetes/typed/storage/v1",
     "kubernetes/typed/storage/v1alpha1",
     "kubernetes/typed/storage/v1beta1",
+    "listers/core/v1",
     "pkg/apis/clientauthentication",
     "pkg/apis/clientauthentication/v1alpha1",
     "pkg/apis/clientauthentication/v1beta1",
@@ -437,6 +438,7 @@
     "util/homedir",
     "util/integer",
     "util/retry",
+    "util/workqueue",
   ]
   pruneopts = "UT"
   revision = "1638f8970cefaa404ff3a62950f88b08292b2696"
@@ -494,15 +496,19 @@
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/kubernetes/scheme",
+    "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/util/flowcontrol",
+    "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
   ]
   solver-name = "gps-cdcl"
