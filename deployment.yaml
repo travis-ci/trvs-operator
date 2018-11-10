@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trvs-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: trvs-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: trvs-operator
+  namespace: macstadium-staging
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trvs-operator
+  labels:
+    app: trvs-operator
+spec:
+  selector:
+    matchLabels:
+      app: trvs-operator
+  template:
+    metadata:
+      labels:
+        app: trvs-operator
+    spec:
+      containers:
+      - name: trvs-operator
+        image: travisci/trvs-operator
+      serviceAccountName: trvs-operator
+
+

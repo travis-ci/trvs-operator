@@ -12,7 +12,7 @@ RUN dep ensure -vendor-only
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /trvs-operator .
 
-FROM scratch
+FROM ruby:2.5-alpine
 COPY --from=builder /trvs-operator .
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ENTRYPOINT ["./trvs-operator"]
