@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"time"
 
@@ -15,16 +16,31 @@ import (
 
 	travisclientset "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned"
 	travisscheme "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned/scheme"
+	informers "github.com/travis-ci/trvs-operator/pkg/client/informers/externalversions/travisci/v1"
 	listers "github.com/travis-ci/trvs-operator/pkg/client/listers/travisci/v1"
 )
 
-func NewController(kubeclient kubernetes.Interface, travisclient travisclientset.Interface) *Controller {
+func NewController(
+	kubeclient kubernetes.Interface,
+	travisclient travisclientset.Interface,
+	trvsSecretInformer informers.TrvsSecretInformer) *Controller {
+
 	runtime.Must(travisscheme.AddToScheme(scheme.Scheme))
 	controller := &Controller{
 		kubeclient:   kubeclient,
 		travisclient: travisclient,
+		trvsLister:   trvsSecretInformer.Lister(),
+		trvsSynced:   trvsSecretInformer.Informer().HasSynced,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "TrvsSecrets"),
 	}
+
+	trvsSecretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueTrvsSecret,
+		UpdateFunc: func(old, new interface{}) {
+			controller.enqueueTrvsSecret(new)
+		},
+	})
+
 	return controller
 }
 
@@ -34,6 +50,7 @@ type Controller struct {
 
 	secretsLister corelisters.SecretLister
 	trvsLister    listers.TrvsSecretLister
+	trvsSynced    cache.InformerSynced
 
 	workqueue workqueue.RateLimitingInterface
 }
@@ -43,6 +60,11 @@ func (c *Controller) Run(threads int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	log.Info("starting controller")
+
+	log.Info("waiting for informer caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, c.trvsSynced); !ok {
+		return fmt.Errorf("failed waiting for caches to sync")
+	}
 
 	entry := log.WithField("count", threads)
 	entry.Info("starting workers")
@@ -121,7 +143,7 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) enqueueFoo(obj interface{}) {
+func (c *Controller) enqueueTrvsSecret(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {

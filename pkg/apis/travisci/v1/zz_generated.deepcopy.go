@@ -55,7 +55,7 @@ func (in *TrvsSecret) DeepCopyObject() runtime.Object {
 func (in *TrvsSecretList) DeepCopyInto(out *TrvsSecretList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TrvsSecret, len(*in))

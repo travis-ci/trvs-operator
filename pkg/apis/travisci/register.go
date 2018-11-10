@@ -1,3 +1,3 @@
 package travisci
 
-const GroupName = "travis-ci.com"
+const GroupName = "travisci.com"

@@ -30,7 +30,7 @@ type TravisciV1Interface interface {
 	TrvsSecretsGetter
 }
 
-// TravisciV1Client is used to interact with features provided by the travisci group.
+// TravisciV1Client is used to interact with features provided by the travisci.com group.
 type TravisciV1Client struct {
 	restClient rest.Interface
 }

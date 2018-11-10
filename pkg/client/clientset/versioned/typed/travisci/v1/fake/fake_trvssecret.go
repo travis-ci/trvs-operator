@@ -34,9 +34,9 @@ type FakeTrvsSecrets struct {
 	ns   string
 }
 
-var trvssecretsResource = schema.GroupVersionResource{Group: "travisci", Version: "v1", Resource: "trvssecrets"}
+var trvssecretsResource = schema.GroupVersionResource{Group: "travisci.com", Version: "v1", Resource: "trvssecrets"}
 
-var trvssecretsKind = schema.GroupVersionKind{Group: "travisci", Version: "v1", Kind: "TrvsSecret"}
+var trvssecretsKind = schema.GroupVersionKind{Group: "travisci.com", Version: "v1", Kind: "TrvsSecret"}
 
 // Get takes name of the trvsSecret, and returns the corresponding trvsSecret object, and an error if there is any.
 func (c *FakeTrvsSecrets) Get(name string, options v1.GetOptions) (result *travisciv1.TrvsSecret, err error) {
