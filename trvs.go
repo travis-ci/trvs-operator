@@ -116,7 +116,7 @@ func (t *Trvs) installDeps() error {
 
 func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
 	var secrets map[string]interface{}
-	var rawKeys bool
+	rawKeys := spec.RawKeys
 
 	if spec.File != "" {
 		var k *Keychain

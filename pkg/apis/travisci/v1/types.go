@@ -21,6 +21,7 @@ type TrvsSecretSpec struct {
 	IsPro       bool   `json:"pro"`
 	File        string `json:"file"`
 	Key         string `json:"key"`
+	RawKeys     bool   `json:"rawKeys"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
