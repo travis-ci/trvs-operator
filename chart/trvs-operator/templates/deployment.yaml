@@ -33,6 +33,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
+            - -trvs={{ .Values.trvsUrl }}
             - -org-keychain={{ .Values.keychains.org }}
             - -com-keychain={{ .Values.keychains.com }}
           env:

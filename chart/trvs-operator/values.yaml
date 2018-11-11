@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: travisci/trvs-operator
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 nameOverride: ""
 fullnameOverride: ""
@@ -20,6 +20,8 @@ ssh:
 keychains:
   org: ""
   com: ""
+
+trvsUrl: ""
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

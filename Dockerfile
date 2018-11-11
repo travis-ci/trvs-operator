@@ -13,7 +13,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /trvs-operator .
 
 FROM ruby:2.5-alpine
-RUN apk add bash git
+RUN apk add bash git build-base
 COPY --from=builder /trvs-operator .
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ENTRYPOINT ["./trvs-operator"]

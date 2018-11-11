@@ -15,9 +15,12 @@ import (
 )
 
 var (
+	trvsURL        = flag.String("trvs", "", "The URL for the trvs repo")
 	orgKeychainURL = flag.String("org-keychain", "", "The URL for the .org keychain")
 	comKeychainURL = flag.String("com-keychain", "", "The URL for the .com keychain")
 )
+
+var trvs *Trvs
 
 func main() {
 	flag.Parse()
@@ -76,7 +79,25 @@ func setupKeychains() Keychains {
 	ks.Org = createKeychain("travis-keychain", *orgKeychainURL)
 	ks.Com = createKeychain("travis-pro-keychain", *comKeychainURL)
 
+	trvs = createTrvs(*trvsURL)
+
 	return ks
+}
+
+const trvsKeyFile = "/etc/secrets/trvs.key"
+
+func createTrvs(url string) *Trvs {
+	key, err := ioutil.ReadFile(trvsKeyFile)
+	if err != nil {
+		log.WithError(err).WithField("file", trvsKeyFile).Fatal("could not read trvs key file")
+	}
+
+	t, err := NewTrvs(url, key)
+	if err != nil {
+		log.WithError(err).Fatal("could not create trvs")
+	}
+
+	return t
 }
 
 func createKeychain(name, url string) *Keychain {
