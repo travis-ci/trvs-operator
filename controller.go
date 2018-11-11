@@ -55,6 +55,17 @@ func NewController(
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
 		UpdateFunc: func(old, new interface{}) {
+			oldSec := old.(*v1.Secret)
+			newSec := new.(*v1.Secret)
+			if newSec.ResourceVersion == oldSec.ResourceVersion {
+				// Ignore the update if the secret hasn't actually changed.
+				//
+				// This is needed because the UpdateFunc is called periodically even when there
+				// are no changes, so updates aren't missed. We already get those updates from the
+				// other informer, though, so this is redundant.
+				return
+			}
+
 			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
@@ -219,6 +230,40 @@ func (c *Controller) enqueueTrvsSecret(obj interface{}) {
 }
 
 func (c *Controller) handleObject(obj interface{}) {
+	var object metav1.Object
+	var ok bool
+
+	if object, ok = obj.(metav1.Object); !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			log.Error("could not decode secret object")
+			return
+		}
+
+		object, ok = tombstone.Obj.(metav1.Object)
+		if !ok {
+			log.Error("could not decode tombstone object")
+		}
+
+		log.Info("recovered secret from tombstone")
+	}
+
+	log.WithField("name", object.GetName()).Info("finding original of secret")
+	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
+		if ownerRef.Kind != "TrvsSecret" {
+			return
+		}
+
+		ts, err := c.trvsLister.TrvsSecrets(object.GetNamespace()).Get(ownerRef.Name)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"self":  object.GetSelfLink(),
+				"owner": ownerRef.Name,
+			}).Warn("ignoring orphaned secret")
+		}
+
+		c.enqueueTrvsSecret(ts)
+	}
 }
 
 func newSecret(ts *travisv1.TrvsSecret, data map[string][]byte) *v1.Secret {
