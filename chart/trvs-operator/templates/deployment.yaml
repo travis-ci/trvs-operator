@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trvs-operator.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "trvs-operator.name" . }}
+    helm.sh/chart: {{ include "trvs-operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "trvs-operator.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "trvs-operator.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ include "trvs-operator.fullname" . }}
+      volumes:
+        - name: ssh-secrets
+          secret:
+            secretName: {{ .Values.ssh.secretName }}
+        - name: ssh-dir
+          configMap:
+            name: {{ include "trvs-operator.fullname" . }}-ssh-config
+            defaultMode: 0600
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -org-keychain={{ .Values.keychains.org }}
+            - -com-keychain={{ .Values.keychains.com }}
+          env:
+            - name: TRAVIS_KEYCHAIN_DIR
+              value: /keychains
+          volumeMounts:
+            - name: ssh-secrets
+              mountPath: /etc/secrets
+              readOnly: true
+            - name: ssh-dir
+              mountPath: /root/.ssh
+              readOnly: true
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

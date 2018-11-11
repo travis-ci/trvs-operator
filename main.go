@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	log "github.com/sirupsen/logrus"
 	travisclientset "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned"
 	informers "github.com/travis-ci/trvs-operator/pkg/client/informers/externalversions"
@@ -13,7 +14,14 @@ import (
 	"time"
 )
 
+var (
+	orgKeychainURL = flag.String("org-keychain", "", "The URL for the .org keychain")
+	comKeychainURL = flag.String("com-keychain", "", "The URL for the .com keychain")
+)
+
 func main() {
+	flag.Parse()
+
 	stopCh := setupSignalHandler()
 	log.SetLevel(log.DebugLevel)
 
@@ -65,29 +73,27 @@ func setupSignalHandler() <-chan struct{} {
 func setupKeychains() Keychains {
 	var ks Keychains
 
-	ks.Org = createKeychain("travis-keychain")
-	ks.Com = createKeychain("travis-pro-keychain")
+	ks.Org = createKeychain("travis-keychain", *orgKeychainURL)
+	ks.Com = createKeychain("travis-pro-keychain", *comKeychainURL)
 
 	return ks
 }
 
-func createKeychain(name string) *Keychain {
+func createKeychain(name, url string) *Keychain {
 	entry := log.WithField("name", name)
 
-	urlFile := "/etc/secrets/" + name + "-url"
-	keyFile := "/etc/secrets/" + name + ".key"
-
-	url, err := ioutil.ReadFile(urlFile)
-	if err != nil {
-		entry.WithError(err).WithField("file", urlFile).Fatal("could not read url file")
+	if url == "" {
+		entry.Fatal("no url set for keychain")
 	}
+
+	keyFile := "/etc/secrets/" + name + ".key"
 
 	key, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		entry.WithError(err).WithField("file", keyFile).Fatal("could not read key file")
 	}
 
-	k, err := NewKeychain(name, string(url), key)
+	k, err := NewKeychain(name, url, key)
 	if err != nil {
 		entry.WithError(err).Fatal("could not create keychain")
 	}

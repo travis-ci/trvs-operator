@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "trvs-operator.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "trvs-operator.name" . }}
+    helm.sh/chart: {{ include "trvs-operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: {{ include "trvs-operator.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
