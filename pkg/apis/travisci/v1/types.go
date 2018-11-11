@@ -19,6 +19,8 @@ type TrvsSecretSpec struct {
 	Environment string `json:"env"`
 	Prefix      string `json:"prefix"`
 	IsPro       bool   `json:"pro"`
+	File        string `json:"file"`
+	Key         string `json:"key"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

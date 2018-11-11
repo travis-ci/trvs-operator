@@ -14,7 +14,7 @@ import (
 	"github.com/travis-ci/trvs-operator/pkg/apis/travisci/v1"
 )
 
-func NewTrvs(url string, key []byte) (*Trvs, error) {
+func NewTrvs(url string, key []byte, keychains Keychains) (*Trvs, error) {
 	keys, err := ssh.NewPublicKeys("git", key, "")
 	if err != nil {
 		return nil, err
@@ -24,6 +24,7 @@ func NewTrvs(url string, key []byte) (*Trvs, error) {
 		Path:          "/trvs",
 		RepositoryURL: url,
 		Keys:          keys,
+		Keychains:     keychains,
 	}
 
 	if err = t.initialize(); err != nil {
@@ -38,6 +39,7 @@ type Trvs struct {
 	RepositoryURL string
 	Repository    *git.Repository
 	Keys          *ssh.PublicKeys
+	Keychains     Keychains
 }
 
 func (t *Trvs) initialize() error {
@@ -113,34 +115,67 @@ func (t *Trvs) installDeps() error {
 }
 
 func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
-	var out bytes.Buffer
-	cmd := exec.Command(t.exe(), "generate-config", "-n", "-f", "json", "-a", spec.App, "-e", spec.Environment)
-	if spec.IsPro {
-		cmd.Args = append(cmd.Args, "--pro")
-	}
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-
 	var secrets map[string]interface{}
-	if err := json.Unmarshal(out.Bytes(), &secrets); err != nil {
-		return nil, err
+	var rawKeys bool
+
+	if spec.File != "" {
+		var k *Keychain
+		if spec.IsPro {
+			k = t.Keychains.Com
+		} else {
+			k = t.Keychains.Org
+		}
+
+		contents, err := k.ReadFile(spec.File)
+		if err != nil {
+			return nil, err
+		}
+
+		rawKeys = true
+		secrets = make(map[string]interface{})
+		secrets[spec.Key] = contents
+	} else {
+		var out bytes.Buffer
+		cmd := exec.Command(t.exe(), "generate-config", "-n", "-f", "json", "-a", spec.App, "-e", spec.Environment)
+		if spec.IsPro {
+			cmd.Args = append(cmd.Args, "--pro")
+		}
+		cmd.Stdout = &out
+		if err := cmd.Run(); err != nil {
+			return nil, err
+		}
+
+		if spec.Key != "" {
+			rawKeys = true
+			secrets = make(map[string]interface{})
+			secrets[spec.Key] = out.Bytes()
+		} else {
+			if err := json.Unmarshal(out.Bytes(), &secrets); err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	return transformSecretData(spec, secrets), nil
+	return transformSecretData(spec, secrets, rawKeys), nil
 }
 
-func transformSecretData(spec v1.TrvsSecretSpec, data map[string]interface{}) map[string][]byte {
+func transformSecretData(spec v1.TrvsSecretSpec, data map[string]interface{}, rawKeys bool) map[string][]byte {
 	newData := make(map[string][]byte)
 
 	for k, v := range data {
-		if spec.Prefix != "" {
-			k = spec.Prefix + "_" + k
+		if !rawKeys {
+			if spec.Prefix != "" {
+				k = spec.Prefix + "_" + k
+			}
+			k = strings.ToUpper(k)
 		}
 
-		// K8s API handles base64 encoding it
-		newData[strings.ToUpper(k)] = []byte(fmt.Sprintf("%v", v))
+		// K8s API handles base64 encoding the values, so just put the raw bytes in here
+		if bytes, ok := v.([]byte); ok {
+			newData[k] = bytes
+		} else {
+			newData[k] = []byte(fmt.Sprintf("%v", v))
+		}
 	}
 
 	return newData

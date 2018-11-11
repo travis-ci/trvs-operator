@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
+	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -124,4 +125,9 @@ func (k *Keychain) Watch(d time.Duration) {
 		k.Update()
 		time.Sleep(d)
 	}
+}
+
+func (k *Keychain) ReadFile(file string) ([]byte, error) {
+	fullPath := path.Join(k.Path, file)
+	return ioutil.ReadFile(fullPath)
 }
