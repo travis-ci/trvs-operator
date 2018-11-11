@@ -75,6 +75,9 @@ func (t *Trvs) installDeps() error {
 func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
 	var out bytes.Buffer
 	cmd := exec.Command(t.exe(), "generate-config", "-n", "-f", "json", "-a", spec.App, "-e", spec.Environment)
+	if spec.IsPro {
+		cmd.Args = append(cmd.Args, "--pro")
+	}
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
 		return nil, err
