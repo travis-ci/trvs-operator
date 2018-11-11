@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
@@ -122,7 +123,7 @@ func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
 		return nil, err
 	}
 
-	var secrets map[string]string
+	var secrets map[string]interface{}
 	if err := json.Unmarshal(out.Bytes(), &secrets); err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
 	return transformSecretData(spec, secrets), nil
 }
 
-func transformSecretData(spec v1.TrvsSecretSpec, data map[string]string) map[string][]byte {
+func transformSecretData(spec v1.TrvsSecretSpec, data map[string]interface{}) map[string][]byte {
 	newData := make(map[string][]byte)
 
 	for k, v := range data {
@@ -139,7 +140,7 @@ func transformSecretData(spec v1.TrvsSecretSpec, data map[string]string) map[str
 		}
 
 		// K8s API handles base64 encoding it
-		newData[strings.ToUpper(k)] = []byte(v)
+		newData[strings.ToUpper(k)] = []byte(fmt.Sprintf("%v", v))
 	}
 
 	return newData
