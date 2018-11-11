@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"reflect"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -190,6 +191,19 @@ func (c *Controller) syncHandler(key string) error {
 		entry.Error("secret already exists")
 		return nil
 	}
+
+	if reflect.DeepEqual(secretValues, secret.Data) {
+		entry.Info("secret is already up-to-date")
+		return nil
+	}
+
+	entry.Info("updating secret")
+	_, err = c.kubeclient.CoreV1().Secrets(ts.Namespace).Update(newSecret(ts, secretValues))
+	if err != nil {
+		return err
+	}
+
+	entry.Info("updated secret")
 
 	return nil
 }
