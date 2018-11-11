@@ -40,25 +40,64 @@ type Trvs struct {
 }
 
 func (t *Trvs) initialize() error {
-	r, err := git.PlainClone(t.Path, false, &git.CloneOptions{
-		URL:  t.RepositoryURL,
-		Auth: t.Keys,
-	})
-	if err != nil {
+	if err := t.initializeRepo(); err != nil {
 		return err
 	}
+	log.Info("initialized trvs repo")
 
-	t.Repository = r
-	log.WithFields(log.Fields{
-		"path": t.Path,
-		"url":  t.RepositoryURL,
-	}).Info("cloned trvs")
-
-	if err = t.installDeps(); err != nil {
+	if err := t.installDeps(); err != nil {
 		return err
 	}
 	log.Info("installed trvs dependencies")
 
+	return nil
+}
+
+func (t *Trvs) initializeRepo() error {
+	entry := log.WithFields(log.Fields{
+		"path": t.Path,
+		"url":  t.RepositoryURL,
+	})
+
+	var r *git.Repository
+	r, err := git.PlainOpen(t.Path)
+	if err != nil {
+		if err == git.ErrRepositoryNotExists {
+			// if the repository doesn't exist, make a fresh clone
+			r, err = git.PlainClone(t.Path, false, &git.CloneOptions{
+				URL:  t.RepositoryURL,
+				Auth: t.Keys,
+			})
+			if err != nil {
+				return err
+			}
+
+			entry.Info("cloned trvs")
+		} else {
+			return err
+		}
+	} else {
+		// if the repository already existed, update it
+		wt, err := r.Worktree()
+		if err != nil {
+			return err
+		}
+
+		if err = wt.Pull(&git.PullOptions{
+			RemoteName: "origin",
+			Auth:       t.Keys,
+			Force:      true,
+		}); err != nil {
+			if err != git.NoErrAlreadyUpToDate {
+				entry.WithError(err).Error("could not update trvs")
+				return err
+			}
+		}
+
+		entry.Info("updated trvs")
+	}
+
+	t.Repository = r
 	return nil
 }
 

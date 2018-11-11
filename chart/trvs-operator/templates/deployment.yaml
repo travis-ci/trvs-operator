@@ -21,6 +21,8 @@ spec:
     spec:
       serviceAccountName: {{ include "trvs-operator.fullname" . }}
       volumes:
+        - name: trvs
+          emptyDir: {}
         - name: ssh-secrets
           secret:
             secretName: {{ .Values.ssh.secretName }}
@@ -40,6 +42,8 @@ spec:
             - name: TRAVIS_KEYCHAIN_DIR
               value: /keychains
           volumeMounts:
+            - name: trvs
+              mountPath: /trvs
             - name: ssh-secrets
               mountPath: /etc/secrets
               readOnly: true
