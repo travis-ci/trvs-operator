@@ -3,15 +3,17 @@ package main
 import (
 	"flag"
 	log "github.com/sirupsen/logrus"
-	travisclientset "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned"
-	informers "github.com/travis-ci/trvs-operator/pkg/client/informers/externalversions"
 	"io/ioutil"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	travisclientset "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned"
+	informers "github.com/travis-ci/trvs-operator/pkg/client/informers/externalversions"
 )
 
 var (
@@ -46,11 +48,14 @@ func main() {
 		log.WithError(err).Fatal("could not create custom client")
 	}
 
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, time.Second*30)
 	travisInformerFactory := informers.NewSharedInformerFactory(travisclient, time.Second*30)
 
 	controller := NewController(keychains, kubeclient, travisclient,
+		kubeInformerFactory.Core().V1().Secrets(),
 		travisInformerFactory.Travisci().V1().TrvsSecrets())
 
+	kubeInformerFactory.Start(stopCh)
 	travisInformerFactory.Start(stopCh)
 
 	if err := controller.Run(2, stopCh); err != nil {
