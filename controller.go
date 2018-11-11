@@ -21,12 +21,14 @@ import (
 )
 
 func NewController(
+	keychains Keychains,
 	kubeclient kubernetes.Interface,
 	travisclient travisclientset.Interface,
 	trvsSecretInformer informers.TrvsSecretInformer) *Controller {
 
 	runtime.Must(travisscheme.AddToScheme(scheme.Scheme))
 	controller := &Controller{
+		keychains:    keychains,
 		kubeclient:   kubeclient,
 		travisclient: travisclient,
 		trvsLister:   trvsSecretInformer.Lister(),
@@ -45,6 +47,8 @@ func NewController(
 }
 
 type Controller struct {
+	keychains Keychains
+
 	kubeclient   kubernetes.Interface
 	travisclient travisclientset.Interface
 
@@ -138,7 +142,11 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	entry.WithField("name", trvsSecret.ObjectMeta.Name).Info("found resource")
+	entry.WithFields(log.Fields{
+		"name": trvsSecret.ObjectMeta.Name,
+		"app":  trvsSecret.Spec.App,
+		"env":  trvsSecret.Spec.Environment,
+	}).Info("checking secret")
 
 	return nil
 }
