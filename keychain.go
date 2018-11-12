@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -63,7 +64,7 @@ func (k *Keychain) initialize() error {
 	}
 
 	k.Repository = r
-	if err = k.Update(); err != nil {
+	if _, err = k.Update(); err != nil {
 		return err
 	}
 
@@ -93,7 +94,7 @@ func (k *Keychain) clone() (*git.Repository, error) {
 	return r, nil
 }
 
-func (k *Keychain) Update() error {
+func (k *Keychain) Update() (bool, error) {
 	entry := log.WithFields(log.Fields{
 		"path": k.Path,
 		"url":  k.RepositoryURL,
@@ -101,7 +102,7 @@ func (k *Keychain) Update() error {
 
 	wt, err := k.Repository.Worktree()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := wt.Pull(&git.PullOptions{
@@ -111,18 +112,22 @@ func (k *Keychain) Update() error {
 	}); err != nil {
 		if err != git.NoErrAlreadyUpToDate {
 			entry.WithError(err).Error("could not update keychain")
-			return err
+			return false, err
 		}
 	} else {
 		entry.Info("updated keychain")
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
 
-func (k *Keychain) Watch(d time.Duration) {
+func (k *Keychain) Watch(d time.Duration, handler func(*Keychain)) {
 	for {
-		k.Update()
+		updated, _ := k.Update()
+		if updated {
+			handler(k)
+		}
 		time.Sleep(d)
 	}
 }
@@ -130,4 +135,8 @@ func (k *Keychain) Watch(d time.Duration) {
 func (k *Keychain) ReadFile(file string) ([]byte, error) {
 	fullPath := path.Join(k.Path, file)
 	return ioutil.ReadFile(fullPath)
+}
+
+func (k *Keychain) IsPro() bool {
+	return strings.Contains(path.Base(k.Path), "-pro-")
 }

@@ -9,6 +9,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -44,6 +45,8 @@ func NewController(
 		trvsSynced:    trvsSecretInformer.Informer().HasSynced,
 		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "TrvsSecrets"),
 	}
+
+	keychains.Watch(30*time.Second, controller.enqueueKeychainSecrets)
 
 	trvsSecretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueTrvsSecret,
@@ -263,6 +266,23 @@ func (c *Controller) handleObject(obj interface{}) {
 		}
 
 		c.enqueueTrvsSecret(ts)
+	}
+}
+
+func (c *Controller) enqueueKeychainSecrets(k *Keychain) {
+	isPro := k.IsPro()
+
+	secrets, err := c.trvsLister.List(labels.Everything())
+	if err != nil {
+		log.WithError(err).Error("could not fetch existing secrets")
+		return
+	}
+
+	for _, ts := range secrets {
+		// if the secret matches this keychain, enqueue it so we check for updates
+		if ts.Spec.IsPro == isPro {
+			c.enqueueTrvsSecret(ts)
+		}
 	}
 }
 

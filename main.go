@@ -31,7 +31,6 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 
 	keychains := setupKeychains()
-	keychains.Watch(30 * time.Second)
 
 	cfg, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
