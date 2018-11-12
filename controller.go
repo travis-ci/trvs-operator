@@ -16,8 +16,10 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	travisv1 "github.com/travis-ci/trvs-operator/pkg/apis/travisci/v1"
@@ -25,6 +27,13 @@ import (
 	travisscheme "github.com/travis-ci/trvs-operator/pkg/client/clientset/versioned/scheme"
 	informers "github.com/travis-ci/trvs-operator/pkg/client/informers/externalversions/travisci/v1"
 	listers "github.com/travis-ci/trvs-operator/pkg/client/listers/travisci/v1"
+)
+
+const controllerAgentName = "trvs-operator"
+
+const (
+	ErrResourceExists     = "ErrResourceExists"
+	MessageResourceExists = "Secret %q already exists and is not managed by a TrvsSecret"
 )
 
 func NewController(
@@ -35,6 +44,17 @@ func NewController(
 	trvsSecretInformer informers.TrvsSecretInformer) *Controller {
 
 	runtime.Must(travisscheme.AddToScheme(scheme.Scheme))
+	log.Info("creating event recorder")
+	eb := record.NewBroadcaster()
+	eb.StartLogging(log.WithField("type", "events").Infof)
+	eb.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		Interface: kubeclient.CoreV1().Events(""),
+	})
+
+	recorder := eb.NewRecorder(scheme.Scheme, v1.EventSource{
+		Component: controllerAgentName,
+	})
+
 	controller := &Controller{
 		keychains:     keychains,
 		kubeclient:    kubeclient,
@@ -44,6 +64,7 @@ func NewController(
 		trvsLister:    trvsSecretInformer.Lister(),
 		trvsSynced:    trvsSecretInformer.Informer().HasSynced,
 		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "TrvsSecrets"),
+		recorder:      recorder,
 	}
 
 	keychains.Watch(30*time.Second, controller.enqueueKeychainSecrets)
@@ -89,6 +110,7 @@ type Controller struct {
 	trvsSynced    cache.InformerSynced
 
 	workqueue workqueue.RateLimitingInterface
+	recorder  record.EventRecorder
 }
 
 func (c *Controller) Run(threads int, stopCh <-chan struct{}) error {
@@ -193,6 +215,9 @@ func (c *Controller) syncHandler(key string) error {
 	secret, err := c.secretsLister.Secrets(ts.Namespace).Get(ts.Name)
 	if errors.IsNotFound(err) {
 		secret, err = c.kubeclient.CoreV1().Secrets(ts.Namespace).Create(newSecret(ts, secretValues))
+		if err == nil {
+			c.recorder.Eventf(ts, v1.EventTypeNormal, "CreateSecret", "Created secret: %s", secret.Name)
+		}
 	}
 
 	if err != nil {
@@ -201,9 +226,9 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if !metav1.IsControlledBy(secret, ts) {
-		// TODO: report this as an event and return an error
-		entry.Error("secret already exists")
-		return nil
+		msg := fmt.Sprintf(MessageResourceExists, secret.Name)
+		c.recorder.Event(ts, v1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf(msg)
 	}
 
 	if reflect.DeepEqual(secretValues, secret.Data) {
@@ -212,13 +237,12 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	entry.Info("updating secret")
-	_, err = c.kubeclient.CoreV1().Secrets(ts.Namespace).Update(newSecret(ts, secretValues))
+	secret, err = c.kubeclient.CoreV1().Secrets(ts.Namespace).Update(newSecret(ts, secretValues))
 	if err != nil {
 		return err
 	}
 
-	entry.Info("updated secret")
-
+	c.recorder.Eventf(ts, v1.EventTypeNormal, "UpdateSecret", "Updated secret: %s", secret.Name)
 	return nil
 }
 
