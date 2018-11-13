@@ -135,8 +135,17 @@ func (t *Trvs) Generate(spec v1.TrvsSecretSpec) (map[string][]byte, error) {
 		secrets = make(map[string]interface{})
 		secrets[spec.Key] = contents
 	} else {
+		// generate JSON because it's easier to work with natively in Go
+		format := "json"
+		if spec.Key != "" {
+			// if we are just storing the bytes, use YAML
+			//
+			// add an option to the Spec if we need to customize this later, but for now,
+			// the only use case for this wants YAML.
+			format = "yaml"
+		}
 		var out bytes.Buffer
-		cmd := exec.Command(t.exe(), "generate-config", "-n", "-f", "json", "-a", spec.App, "-e", spec.Environment)
+		cmd := exec.Command(t.exe(), "generate-config", "-n", "-f", format, "-a", spec.App, "-e", spec.Environment)
 		if spec.IsPro {
 			cmd.Args = append(cmd.Args, "--pro")
 		}
