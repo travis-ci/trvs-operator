@@ -18,10 +18,12 @@ ssh:
 
 # URLs for the keychains
 keychains:
+  pollInterval: 1m
   org: ""
   com: ""
 
 trvsUrl: ""
+resyncInterval: 5m
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

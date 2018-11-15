@@ -38,6 +38,7 @@ const (
 
 func NewController(
 	keychains Keychains,
+	keychainSyncPeriod time.Duration,
 	kubeclient kubernetes.Interface,
 	travisclient travisclientset.Interface,
 	secretInformer coreinformers.SecretInformer,
@@ -67,7 +68,7 @@ func NewController(
 		recorder:      recorder,
 	}
 
-	keychains.Watch(30*time.Second, controller.enqueueKeychainSecrets)
+	keychains.Watch(keychainSyncPeriod, controller.enqueueKeychainSecrets)
 
 	trvsSecretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueTrvsSecret,

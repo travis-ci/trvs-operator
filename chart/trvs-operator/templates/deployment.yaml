@@ -38,6 +38,8 @@ spec:
             - -trvs={{ .Values.trvsUrl }}
             - -org-keychain={{ .Values.keychains.org }}
             - -com-keychain={{ .Values.keychains.com }}
+            - -git-sync-period={{ .Values.keychains.pollInterval }}
+            - -k8s-sync-period={{ .Values.resyncInterval }}
           env:
             - name: TRAVIS_KEYCHAIN_DIR
               value: /keychains

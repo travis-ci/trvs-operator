@@ -20,6 +20,9 @@ var (
 	trvsURL        = flag.String("trvs", "", "The URL for the trvs repo")
 	orgKeychainURL = flag.String("org-keychain", "", "The URL for the .org keychain")
 	comKeychainURL = flag.String("com-keychain", "", "The URL for the .com keychain")
+
+	gitSyncPeriod  = flag.Duration("git-sync-period", 1*time.Minute, "How frequently to sync the keychain Git repos")
+	kubeSyncPeriod = flag.Duration("k8s-sync-period", 5*time.Minute, "How frequently to resync all the relevant Kubernetes resources")
 )
 
 var trvs *Trvs
@@ -47,10 +50,10 @@ func main() {
 		log.WithError(err).Fatal("could not create custom client")
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, time.Second*30)
-	travisInformerFactory := informers.NewSharedInformerFactory(travisclient, time.Second*30)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, *kubeSyncPeriod)
+	travisInformerFactory := informers.NewSharedInformerFactory(travisclient, *kubeSyncPeriod)
 
-	controller := NewController(keychains, kubeclient, travisclient,
+	controller := NewController(keychains, *gitSyncPeriod, kubeclient, travisclient,
 		kubeInformerFactory.Core().V1().Secrets(),
 		travisInformerFactory.Travisci().V1().TrvsSecrets())
 
