@@ -7,8 +7,6 @@ metadata:
     helm.sh/chart: {{ include "trvs-operator.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-  annotations:
-    "helm.sh/hook": crd-install
 spec:
   group: travisci.com
   versions:
