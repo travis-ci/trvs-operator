@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# first do ./docker-build
+# this will be able to run the container locally but fail as it requires k8s
+
+version=$(git describe --always --dirty --tags 2>/dev/null)
+docker run --name trvs-operator \
+  -e SSH_KNOWN_HOSTS="/etc/secrets/known_hosts" \
+  -e TRAVIS_KEYCHAIN_DIR=/ \
+  --mount type=bind,source=$(pwd)/keys,target=/etc/secrets \
+  --rm -ti trvs-operator:$version \
+    -org-keychain git@github.com:travis-pro/travis-keychain.git \
+    -com-keychain git@github.com:travis-pro/travis-pro-keychain.git \
+    -trvs git@github.com:travis-ci/trvs.git

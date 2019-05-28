@@ -21,42 +21,22 @@ When you push changes to the master branch of the keychain repos, the operator s
 
 ## Setting up
 
-Unfortunately, getting this operator up and running in the cluster is a bit non-trivial.
+Unfortunately, getting this operator up and running in the cluster is a bit non-trivial. We've made a small script that will guide you through it.
 
-1. Create SSH keys for the three repositories:
+   ```sh
+   $ ./bin/install-trvs-operator.sh
+   ```
 
-    ```sh
-    $ ssh-keygen -t rsa
-    Generating public/private rsa key pair.
-    Enter file in which to save the key (/Users/matt/.ssh/id_rsa): trvs.key
-    Enter passphrase (empty for no passphrase):
-    Enter same passphrase again:
-    Your identification has been saved in trvs.key.
-    Your public key has been saved in trvs.key.pub.
-    ...
+It will:
 
-    # Repeat for the other two repos: travis-keychain.key and travis-pro-keychain.key
-    ```
+1. Create SSH keys for the three repositories.
 
-2. Add the public keys for each repo as a deploy key in GitHub. Read-only permissions are sufficient for trvs-operator.
+2. Ask you to add the public keys for each repo as a deploy key in GitHub. Read-only permissions are sufficient for trvs-operator.
 
-3. Create a Kubernetes secret which each private key as its own entry:
+3. Create a Kubernetes secret which each private key as its own entry.
 
-    ```sh
-    $ kubectl create secret generic trvs-operator \
-        --from-file=travis-keychain.key \
-        --from-file=travis-pro-keychain.key \
-        --from-file=trvs.key
-    ```
-
-4. Install the operator using Helm:
-
-    ```sh
-    $ helm install chart/trvs-operator --name=trvs-operator \
-        --set 'ssh.secretName=trvs-operator' \
-        --set 'keychains.org=<ssh URL to org keychain>' \
-        --set 'keychains.com=<ssh URL to com keychain>' \
-        --set 'trvsUrl=<ssh URL to trvs repo>'
-    ```
+4. Install the operator using Helm.
 
 You're done. Now the operator should be running and will be able to transform `TrvsSecret` resources into ordinary Kubernetes secrets.
+
+NOTE: The keys are now also on your machine, you likely want to remove them at some point.
